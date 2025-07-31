@@ -12,7 +12,9 @@ class Tetris extends HTMLCanvasElement {
     this._Rows = 20;
     this._Cols = 10;
     this._Cells = this._Rows*this._Cols;
-    this._Pieces = { 
+    this._Array = new Array(this._Cells);
+    this._Stats = [0,0,0,0,0,0,0,0];
+    this._Pieces = {
       "1": [[0,0,1,0,0,1,1,1],[0,0,1,0,0,1,1,1],[0,0,1,0,0,1,1,1],[0,0,1,0,0,1,1,1]], 
       "2": [[0,0,1,0,1,1,2,1],[1,0,0,1,1,1,0,2],[0,0,1,0,1,1,2,1],[1,0,0,1,1,1,0,2]], 
       "3": [[1,0,2,0,0,1,1,1],[0,0,0,1,1,1,1,2],[1,0,2,0,0,1,1,1],[0,0,0,1,1,1,1,2]], 
@@ -29,9 +31,8 @@ class Tetris extends HTMLCanvasElement {
     this._Init();
   }
   _Init() {
-    this._Array = new Array(this._Cells).fill(0,0,this._Cells);
+    this._Array.fill(0,0,this._Cells);
     this._Lines = 0;
-    this._Stats = [0,0,0,0,0,0,0,0];
     this._Score = 0;
     this._Level = 1;
     this._FallSpeed = 900;
@@ -39,6 +40,7 @@ class Tetris extends HTMLCanvasElement {
     this._Duration = 0;
     this._Piece = {Piece: RandInt(1,7),Orientation: RandInt(0,3),x: 4,y: -4};
     this._NextPiece = {Piece: RandInt(1,7),Orientation: RandInt(0,3),x: 4,y: -4};
+    this._Stats.forEach(stat => stat = 0);
     this._Stats[this._Piece.Piece]++;
     this._Update(0);
   }
@@ -50,9 +52,13 @@ class Tetris extends HTMLCanvasElement {
       else { this._Array[y * this._Cols + x] = this._Piece.Piece; }
     }
     this._TestRows();
-    this._Piece = { ...this._NextPiece }
+    this._Piece.Piece = this._NextPiece.Piece; 
+    this._Piece.Orientation = this._NextPiece.Orientation;
+    this._Piece.x = 4;
+    this._Piece.y = -4;
     this._Stats[this._Piece.Piece]++;
-    this._NextPiece = {Piece: RandInt(1,7),Orientation: RandInt(0,3),x: 4,y: -4};
+    this._NextPiece.Piece = RandInt(1,7); 
+    this._NextPiece.Orientation = RandInt(0,3);
   }
   _CollisionTest(ox = 0, oy = 0,rot,shadow) { 
     let orientation = this._Pieces[this._Piece.Piece][(rot != undefined ? rot : this._Piece.Orientation)];
