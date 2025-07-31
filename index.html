@@ -141,13 +141,13 @@ class Tetris extends HTMLCanvasElement {
     this.DrawText("n","#717171","20px sans-serif",this._CellSize * 16 + 3,0,`Lines: ${this._Lines}`);
     this.DrawText("n","#717171","20px sans-serif",this._CellSize * 16 + 3,20,`Score: ${this._Score}`);
     this.DrawText("n","#717171","20px sans-serif",this._CellSize * 16 + 3,40,`Level: ${this._Level}`);
-    this.DrawText("n","#717171","20px sans-serif",this._CellSize * 16 + 3,60,"Next Piece:");
+    this.DrawText("n","#717171","20px sans-serif",this._CellSize * 16 + 3,80,"Next Piece:");
     this.DrawText("n","#717171","20px sans-serif",this._CellSize * 16 + 3,440,"Time:");
     let Ctime = this._Duration , hh = Math.floor(Ctime / 3600).toString().padStart(2,0) , mm = Math.floor((Ctime % 3600) / 60).toString().padStart(2,0) , ss = Math.floor(Ctime % 60).toString().padStart(2,0);
     this.DrawText("n","#717171","20px sans-serif",this._CellSize * 16 + 3,460,`${hh}:${mm}:${ss}`);
     this._DrawPiece(1,0,this._CollisionTest(0,0,null,true)); //Shadow piece
     this._DrawPiece(); //Current Piece
-    this._DrawPiece(2,7,4); //Next piece
+    this._DrawPiece(2,7,5); //Next piece
 
     this._DrawPiece(2,0,0,1); //Stat piece
     this.DrawText("n","#717171","20px sans-serif",0,this._CellSize * 2,this._Stats[1]);
@@ -226,5 +226,6 @@ window.addEventListener('load',() => {
     </script>
   </head>
   <body>
+    Arrow Keys to Play. L/R = Move, Up = Rotate, Down = decend by one.<br>
   </body>
 </html>
