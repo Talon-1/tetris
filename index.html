@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>body { background: black; color: white; }</style>
+    <script>
+function RandInt(min,max) { return Math.floor(Math.random() * (max - min + 1) + min); }
+
+class Tetris extends HTMLCanvasElement {
+  constructor(Parent) {
+    super();
+    this._CellSize = 24;
+    this._Rows = 20;
+    this._Cols = 10;
+    this._Cells = this._Rows*this._Cols;
+    this._Pieces = { 
+      "1": [[0,0,1,0,0,1,1,1],[0,0,1,0,0,1,1,1],[0,0,1,0,0,1,1,1],[0,0,1,0,0,1,1,1]], 
+      "2": [[0,0,1,0,1,1,2,1],[1,0,0,1,1,1,0,2],[0,0,1,0,1,1,2,1],[1,0,0,1,1,1,0,2]], 
+      "3": [[1,0,2,0,0,1,1,1],[0,0,0,1,1,1,1,2],[1,0,2,0,0,1,1,1],[0,0,0,1,1,1,1,2]], 
+      "4": [[0,0,1,0,2,0,3,0],[0,0,0,1,0,2,0,3],[0,0,1,0,2,0,3,0],[0,0,0,1,0,2,0,3]], 
+      "5": [[0,0,0,1,1,1,2,1],[0,0,1,0,0,1,0,2],[0,0,1,0,2,0,2,1],[1,0,1,1,0,2,1,2]], 
+      "6": [[2,0,0,1,1,1,2,1],[0,0,0,1,0,2,1,2],[0,0,1,0,2,0,0,1],[0,0,1,0,1,1,1,2]], 
+      "7": [[1,0,0,1,1,1,2,1],[0,0,0,1,1,1,0,2],[0,0,1,0,2,0,1,1],[1,0,0,1,1,1,1,2]] 
+    }
+    this._Colors = ["#181818","#ffe73f","#e26398","#7ed84c","#53ddf3","#6cb4ff","#ff9f4c","#a76af6"];
+    this._ShadowColors = ['rgba(24,24,24,0.1)','rgba(255,231,63,0.1)','rgba(226,99,152,0.1)','rgba(126,216,76,0.1)','rgba(83,221,243,0.1)','rgba(108,180,225,0.1)','rgba(255,159,76,0.1)','rgba(167,106,246,0.1)']
+    this.width = (this._Cols + 12) * this._CellSize;
+    this.height = this._Rows * this._CellSize;
+    if (Parent instanceof HTMLElement) { Parent.appendChild(this); }
+    this._Init();
+  }
+  _Init() {
+    this._Array = new Array(this._Cells).fill(0,0,this._Cells);
+    this._Lines = 0;
+    this._Stats = [0,0,0,0,0,0,0,0];
+    this._Score = 0;
+    this._Level = 1;
+    this._FallSpeed = 900;
+    this._TickCount = 0;
+    this._Duration = 0;
+    this._Piece = {Piece: RandInt(1,7),Orientation: RandInt(0,3),x: 4,y: -4};
+    this._NextPiece = {Piece: RandInt(1,7),Orientation: RandInt(0,3),x: 4,y: -4};
+    this._Stats[this._Piece.Piece]++;
+    this._Update(0);
+  }
+  _SetPiece() { 
+    let orientation = this._Pieces[this._Piece.Piece][this._Piece.Orientation];
+    for (let i = 0; i < orientation.length; i += 2) {
+      let x = this._Piece.x + orientation[i] , y = this._Piece.y + orientation[i+1];
+      if (y < 0) { this._Init(); }
+      else { this._Array[y * this._Cols + x] = this._Piece.Piece; }
+    }
+    this._TestRows();
+    this._Piece = { ...this._NextPiece }
+    this._Stats[this._Piece.Piece]++;
+    this._NextPiece = {Piece: RandInt(1,7),Orientation: RandInt(0,3),x: 4,y: -4};
+  }
+  _CollisionTest(ox = 0, oy = 0,rot,shadow) { 
+    let orientation = this._Pieces[this._Piece.Piece][(rot != undefined ? rot : this._Piece.Orientation)];
+    if (shadow) {
+      for (let j = this._Piece.y; j <= this._Rows; j++) {
+        for (let i = 0; i <= orientation.length; i += 2) {
+          let x = this._Piece.x + orientation[i] , y = orientation[i+1] + j;
+          if (y >= this._Rows || (y >= 0 && this._Array[y * this._Cols + x] > 0)) { return j - 1; }
+        }
+      }
+    }
+    else {
+      for (let i = 0; i <= orientation.length; i += 2) {
+        let x = this._Piece.x + orientation[i] + ox , y = this._Piece.y + orientation[i+1] + oy;
+        if (x < 0 || x >= this._Cols || y >= this._Rows || (y >= 0 && this._Array[y * this._Cols + x] > 0)) { return true; }
+      }
+    }
+  }
+  _TestRows() { 
+    let y = this._Rows - 1 , removed = 0, scores = [0,50,125,300,800];
+    while (y > 0) {
+      let start = y * this._Cols , row = this._Array.slice(start,start + this._Cols);
+      if (!row.includes(0)) {
+        this._Array.splice(start,this._Cols); //Remove Row At Index
+        this._Array.splice(0,0,...new Array(this._Cols).fill(0,0,this._Cols)); //Insert new blank row at beginning
+        removed++;
+      }
+      else { y--; }
+    }
+    this._Score += scores[removed];
+    this._Lines += removed;
+  }
+  _Update(Time) {
+    let DeltaTime = 0 , DeltaDraw = 0;
+    if (this._LastUpdate == undefined) { this._LastUpdate = Time; }
+    else { DeltaTime = Time - this._LastUpdate; }
+    if (DeltaTime > 60) { DeltaTime = 60; }
+
+    this._TickCount += DeltaTime; 
+    this._Duration += DeltaTime / 1000;
+    if (this._TickCount >= this._FallSpeed) { 
+      this._Piece.y += 1; 
+      this._TickCount -= this._FallSpeed;
+      if (this._CollisionTest()) {
+        this._Piece.y -= 1;
+        this._SetPiece();
+      }
+    }
+    if (this._Level == 1 && this._Duration >= 60) { this._Level++; this._FallSpeed -= 100; }
+    else if (this._Level == 2 && this._Duration >= 120) { this._Level++; this._FallSpeed -= 100; }
+    else if (this._Level == 3 && this._Duration >= 240) { this._Level++; this._FallSpeed -= 100; }
+    else if (this._Level == 4 && this._Duration >= 360) { this._Level++; this._FallSpeed -= 100; }
+    else if (this._Level == 5 && this._Duration >= 540) { this._Level++; this._FallSpeed -= 100; }
+    else if (this._Level == 6 && this._Duration >= 720) { this._Level++; this._FallSpeed -= 100; }
+    else if (this._Level == 7 && this._Duration >= 960) { this._Level++; this._FallSpeed -= 100; }
+    else if (this._Level == 8 && this._Duration >= 1200) { this._Level++; this._FallSpeed -= 100; }
+    else if (this._Level == 9 && this._Duration >= 1500) { this._Level++; this._FallSpeed -= 100; }
+
+    this._Render();	  
+    this._LastUpdate = Time;
+    this._Animation = requestAnimationFrame(this._Update.bind(this));
+  }
+  _DrawPiece(type = 0,ox = 0,oy = 0,status) { 
+    let block = (status ? {Piece: status,Orientation: 0,x: -6,y: 0} : (type == 2 ? this._NextPiece : this._Piece)) , orientation = this._Pieces[block.Piece][block.Orientation];
+    for (let i = 0; i < orientation.length; i += 2) {
+      let x = block.x + orientation[i] + ox , y = (type >= 1 ? 0 : block.y) + orientation[i+1] + oy;
+      this.DrawRect("f",(type == 1 ? this._ShadowColors[block.Piece] : this._Colors[block.Piece]),1,(x + 6) * this._CellSize,y * this._CellSize,this._CellSize,this._CellSize);
+      this.DrawRect("n",(type == 1 ? this._Colors[block.Piece] : "#2d2d2d"),1,(x + 6) * this._CellSize,y * this._CellSize,this._CellSize,this._CellSize); 
+    }
+  }
+  _Render() { 
+    this.DrawClear("#14354c");
+    for (let x = 0; x < this._Cols; x++) {
+      for (let y = 0; y < this._Rows; y++) {
+        let CellIndex = y * this._Cols + x , CellData = this._Array[CellIndex];
+        this.DrawRect("f",this._Colors[CellData],1,(x + 6) * this._CellSize,y * this._CellSize,this._CellSize,this._CellSize);
+        this.DrawRect("n","#2d2d2d",1,(x + 6) * this._CellSize,y * this._CellSize,this._CellSize,this._CellSize);
+      }
+    }
+    this.DrawText("n","#717171","20px sans-serif",this._CellSize * 16 + 3,0,`Lines: ${this._Lines}`);
+    this.DrawText("n","#717171","20px sans-serif",this._CellSize * 16 + 3,20,`Score: ${this._Score}`);
+    this.DrawText("n","#717171","20px sans-serif",this._CellSize * 16 + 3,40,`Level: ${this._Level}`);
+    this.DrawText("n","#717171","20px sans-serif",this._CellSize * 16 + 3,60,"Next Piece:");
+    this.DrawText("n","#717171","20px sans-serif",this._CellSize * 16 + 3,440,"Time:");
+    let Ctime = this._Duration , hh = Math.floor(Ctime / 3600).toString().padStart(2,0) , mm = Math.floor((Ctime % 3600) / 60).toString().padStart(2,0) , ss = Math.floor(Ctime % 60).toString().padStart(2,0);
+    this.DrawText("n","#717171","20px sans-serif",this._CellSize * 16 + 3,460,`${hh}:${mm}:${ss}`);
+    this._DrawPiece(1,0,this._CollisionTest(0,0,null,true)); //Shadow piece
+    this._DrawPiece(); //Current Piece
+    this._DrawPiece(2,7,4); //Next piece
+
+    this._DrawPiece(2,0,0,1); //Stat piece
+    this.DrawText("n","#717171","20px sans-serif",0,this._CellSize * 2,this._Stats[1]);
+    this._DrawPiece(2,0,3,2); //Stat piece
+    this.DrawText("n","#717171","20px sans-serif",0,this._CellSize * 5,this._Stats[2]);
+    this._DrawPiece(2,0,6,3); //Stat piece
+    this.DrawText("n","#717171","20px sans-serif",0,this._CellSize * 8,this._Stats[3]);
+    this._DrawPiece(2,0,9,4); //Stat piece
+    this.DrawText("n","#717171","20px sans-serif",0,this._CellSize * 10,this._Stats[4]);
+    this._DrawPiece(2,0,11,5); //Stat piece
+    this.DrawText("n","#717171","20px sans-serif",0,this._CellSize * 13,this._Stats[5]);
+    this._DrawPiece(2,0,14,6); //Stat piece
+    this.DrawText("n","#717171","20px sans-serif",0,this._CellSize * 16,this._Stats[6]);
+    this._DrawPiece(2,0,17,7); //Stat piece
+    this.DrawText("n","#717171","20px sans-serif",0,this._CellSize * 19,this._Stats[7]);
+
+  }
+
+  UserInput(e) {
+    switch (e.keyCode) {
+      case 37: //Left
+        if (!this._CollisionTest(-1,0)) { this._Piece.x -= 1; }
+        break;
+      case 38: //Up
+        if (!this._CollisionTest(0,0,(this._Piece.Orientation + 1) % 4)) { this._Piece.Orientation = (this._Piece.Orientation + 1) % 4; }
+        break;
+      case 39: //Right
+        if (!this._CollisionTest(1,0)) { this._Piece.x += 1; }
+        break;
+      case 40: //Down
+        if (!this._CollisionTest(0,1)) { this._Piece.y += 1; }
+        else { this._SetPiece(); }
+        break;
+    }
+  }
+
+  //clears the canvas with a filled rect the size of the canvas a given color.
+  DrawClear(color) {
+    let Ctx = this.getContext("2d");
+    Ctx.beginPath();
+    Ctx.rect(0,0,this.width,this.height);
+    Ctx.closePath();
+    Ctx.fillStyle = color;
+    Ctx.fill();
+  }
+  //Draws a rectanle at x,y given width/height
+  //Note: Flags - f == fill, without it's just the outline.
+  DrawRect(flags,color,size,x,y,w,h) {
+    let Ctx = this.getContext("2d");
+    Ctx.beginPath();
+    Ctx.rect(x,y,w,h);
+    Ctx.closePath();
+    Ctx.lineWidth = size;
+    if (flags.indexOf("f") != -1) { Ctx.fillStyle = color; Ctx.fill(); }
+    else { Ctx.strokeStyle = color; Ctx.stroke(); }
+  }
+  //Draws text at a given x,y
+  //Note Flags - c == x,y is middle of text (centering)
+  DrawText(flags,color,font,x,y,text) {
+    let Ctx = this.getContext("2d") , oldFont = Ctx.font;
+    Ctx.font = font;
+    let metrics = Ctx.measureText(text);
+    Ctx.fillStyle = color;
+    if (flags.indexOf("c") != -1) { Ctx.fillText(text,x - metrics.width / 2,y + (metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent) / 2); }
+    else { Ctx.fillText(text,x,y + (metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent)); }
+    Ctx.font = oldFont;
+  }
+}
+customElements.define('tetris-engine', Tetris, { extends: "canvas" });
+
+window.addEventListener('load',() => {
+    let PC = new Tetris(document.body);
+    window.addEventListener('keydown',PC.UserInput.bind(PC));
+    PC.style = "border: 1px solid #717171";
+});
+    </script>
+  </head>
+  <body>
+  </body>
+</html>
